@@ -1,15 +1,18 @@
-window.onload = function() {
-"use strict";
- var game = new Phaser.Game( 800, 600, Phaser.AUTO, 'Souls', { preload: preload, create: create, update: update } )
-function preload() {
-    game.load.image('seireitei', 'assets/seireitei.jpg');
-    game.load.image('ground', 'assets/platform.png');
-    game.load.image('star', 'assets/soul.png');
-    game.load.spritesheet('Ichigo', 'assets/Ichigo.png',45,56);
-    game.load.image('skull',"assets/skull.png");
-    game.load.audio('terminated',"assets/terminated.wav");
-    game.load.audio('collected',"assets/collected.mp3");
-    game.load.audio('facts',"assets/facts.mp3");
+window.onload = function () {
+    "use strict";
+    var game = new Phaser.Game(800, 600, Phaser.AUTO, 'Souls', { preload: preload, create: create, update: update });
+    function preload() {
+        game.load.image('seireitei', 'assets/seireitei.jpg');
+        game.load.image('ground', 'assets/platform.png');
+        game.load.image('star', 'assets/soul.png');
+        game.load.spritesheet('Ichigo', 'assets/Ichigo.png',45,56);
+        game.load.image('skull', "assets/skull.png");
+		game.load.audio('terminated',"assets/terminated.wav");
+		game.load.audio('collected',"assets/collected.mp3");
+		game.load.audio('facts',"assets/facts.mp3");
+		game.load.audio('death',"assets/death.mp3");
+		game.load.audio('laugh',"assets/laugh.mp3");
+		game.load.audio('win',"assets/win.mp3");
 }
 var player;
 var platforms;
@@ -61,15 +64,16 @@ function create() {
     player.body.bounce.y = 0.2;
     player.body.gravity.y = 300;
     player.body.collideWorldBounds = true;
-    //  Our two animations, walking left and right.
+   
     player.animations.add('idle', [0,1,2,3],10,true);
-  
+   
     player.animations.add('left', [13, 12], 10, false);
     player.animations.add('right', [12, 13], 10, true);
     //  Finally some stars to collect
     stars = game.add.group();
     //  We will enable physics for any star that is created in this group
     stars.enableBody = true;
+	var i;
     //  Here we'll create 20 of them evenly spaced apart
     for (i = 0; i < 20; i++)
     {
@@ -77,25 +81,26 @@ function create() {
         var star = stars.create(i * 70, 1, 'star');
         star.body.velocity.setTo(200,200);
         star.body.collideWorldBounds=true;
+		star.body.gravity.y=0;
         star.body.bounce.y = 0.7 + Math.random() * 0.2;
         star.body.bounce.x=  0.7 + Math.random() * 0.2;
     }
     skulls=game.add.group();
     skulls.enableBody=true;
-    var i;
     for (i = 0; i < 2; i++)
     {
         //  Create a star inside of the 'stars' group
         var skull = skulls.create(i * 150, 1, 'skull');
         skull.body.velocity.setTo(200,200);
         skull.body.collideWorldBounds=true;
+		skull.body.gravity.y=0;
         skull.body.bounce.y = 0.7 + Math.random() * 0.2;
         skull.body.bounce.x=  0.7 + Math.random() * 0.2;
     }
     //  The score
     scoreText = game.add.text(16, 16, 'score: 0', { fontSize: '32px', fill: '#000' });
     timer= game.time.create();
-    timerEvent= timer.add(Phaser.Timer.MINUTE*1+ Phaser.Timer.SECOND *30, this.endTimer,this);
+    timerEvent= timer.add(Phaser.Timer.MINUTE*2+ Phaser.Timer.SECOND *0, this.endTimer,this);
     timer.start();
    // timer = game.add.text(game.world.centerX+250, 16, '00:00:00', { fontSize: '32px', fill: '#000' });
      // Our controls.
@@ -125,6 +130,10 @@ function update() {
         player.scale.x=1;
         player.animations.play('right');
     }
+	 else if (cursors.up.isDown && player.body.touching.down)
+    {
+        player.body.velocity.y = -350;
+    }
     else 
     {
         //  Stand still
@@ -133,14 +142,11 @@ function update() {
     }
     
     //  Allow the player to jump if they are touching the ground.
-    if (cursors.up.isDown && player.body.touching.down)
-    {
-        player.body.velocity.y = -350;
-    }
      if(stars.countLiving()==0)
         {
-            timer.stop();
-      goText = this.game.add.text(game.world.centerX-100,game.world.centerY,' ', { font: '40px Arial', fill: '#D80000', align: 'center' });
+			var win =game.add.audio('win');
+			win.play();
+      var goText = this.game.add.text(game.world.centerX-100,game.world.centerY,' ', { font: '40px Arial', fill: '#D80000', align: 'center' });
             goText.text="You Win!!";
        goText.visible=true;
         player.kill();
@@ -148,24 +154,40 @@ function update() {
         }
 render();
 }
-    function render()
-    {
-        if (timer.running) {
-         currentTime=game.debug.text(this.formatTime(Math.round((timerEvent.delay - timer.ms) / 1000)), game.world.centerX+300, 32,'#000');
-        }
-    }
     function formatTime(s) {
         // Convert seconds (s) to a nicely formatted and padded time string
         var minutes = "0" + Math.floor(s / 60);
         var seconds = "0" + (s - minutes * 60);
         return minutes.substr(-2) + ":" + seconds.substr(-2);   
     }
+    function render()
+    {
+		var text = formatTime(Math.round((timerEvent.delay - timer.ms) / 1000));
+        if (timer.running) {
+      game.debug.text(text, game.world.centerX+300, 16, "#ff0");
+        }
+    }
 function explode(player,skull)
     {
         player.kill();
+		var rando = Math.floor((Math.random() *3))+1;
+		
         var terminated =game.add.audio('terminated');
+		var death =game.add.audio('death');
+		var laugh =game.add.audio('laugh');
+		if(rando == 1)
+			{
         terminated.play();
-          goText = this.game.add.text(game.world.centerX-100,game.world.centerY,' ', { font: '40px Arial', fill: '#D80000', align: 'center' });
+			}
+		if(rando == 2)
+			{
+        death.play();
+			}
+		if(rando == 3)
+			{
+        laugh.play();
+			}
+         var goText = this.game.add.text(game.world.centerX-100,game.world.centerY,' ', { font: '40px Arial', fill: '#D80000', align: 'center' });
             goText.text="Game Over\n You Died!!";
        goText.visible=true;
         timer.stop();
